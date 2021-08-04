@@ -1,0 +1,42 @@
+# In this example we're sending some test bitcoins from an address we control to a brand new test
+# address. We'll be sending the coins using the following address, public and private keys (please
+# don't abuse).
+#  address : mtWg6ccLiZWw2Et7E5UqmHsYgrAi5wqiov
+#  public  : 03bb318b00de944086fad67ab78a832eb1bf26916053ecd3b14a3f48f9fbe0821f
+#  private : 1af97b1f428ac89b7d35323ea7a68aba8cad178a04eddbbf591f65671bae48a2
+
+# 1. generate a one-shot dummy address we're going to send money to
+$ curl -X POST http://api.blockcypher.com/v1/btc/test3/addrs
+{
+  "private": "19fe93f06878926cc3a75d092621397e958ee82c362cdf61f4eb2d6a12917577",
+  "public": "03c3c99511cd377c8f24c23a1cfbc1145fbdbddc93de0d70792dfa13ef08e7dd4f",
+  "address": "mzqUStzz6VqByVVMndXNFkpnmc9y8XeJ7o"
+}
+
+# 2. build the transaction and save the full output to send.json
+$ curl -d '{"inputs": [{"addresses": ["mtWg6ccLiZWw2Et7E5UqmHsYgrAi5wqiov"]}], "outputs": [{"addresses": ["mzqUStzz6VqByVVMndXNFkpnmc9y8XeJ7o"], "value": 25000}]}' http://api.blockcypher.com/v1/btc/test3/txs/new > send.json
+
+# 3. we generate a signature using the above private key and the data provided in the "tosign"
+# property of send.json. To do so we use the utility at https://github.com/blockcypher/btcutils/tree/master/signer
+# (go build to get binary)
+$ ./signer e6e59c20e6b7b720ac5e61e82e7eea66ce8b8aadc8beb422b2701869cfae42c2 1af97b1f428ac89b7d35323ea7a68aba8cad178a04eddbbf591f65671bae48a2
+3044022025812b93f58b3473124ae726c405cac51f39bb89c110e90f77b2f31a2e1fac67022015b8f1c3fa2ce6d0af44f682ed7e1d7933e51d06099c3eaae8725089b7a8a80e
+
+# 4. we edit send.json and append the above public key and the newly created signature at the end
+# of the file to end up with the following at the bottom of the file (the rest above it is unchanged):
+$ tail -n 10 send.json 
+  "tosign": [
+    "e6e59c20e6b7b720ac5e61e82e7eea66ce8b8aadc8beb422b2701869cfae42c2"
+  ],
+  "signatures": [
+    "3044022025812b93f58b3473124ae726c405cac51f39bb89c110e90f77b2f31a2e1fac67022015b8f1c3fa2ce6d0af44f682ed7e1d7933e51d06099c3eaae8725089b7a8a80e"
+  ],
+  "pubkeys": [
+    "03bb318b00de944086fad67ab78a832eb1bf26916053ecd3b14a3f48f9fbe0821f"
+  ]
+}
+
+# 5. finally, sending the resulting transaction with the signature and the public key
+$ curl -d @send.json http://api.blockcypher.com/v1/btc/test3/txs/send
+
+# This will output the final transaction, including its hash
